@@ -1,1 +1,0 @@
-wget https://tcd.miovision.com/static/dataset/MIO-TCD-Localization.tar ./MIO-TCD-Localization.tar
