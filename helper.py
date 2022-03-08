@@ -29,6 +29,7 @@ def get_IoU(box1, box2):
     inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
     return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
 
+
 class Helper:
     def __init__(self, data_path, label_path) -> None:
         self.data_path = data_path
@@ -41,9 +42,16 @@ class Helper:
             break
         return files
 
-    def generate_false_prediction(self, weight, output_path, force_reload=False) -> None:
+    def generate_false_prediction(self, weight, output_path, force_reload=False, false_localization_label="-1") -> None:
         yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', weight, force_reload=force_reload)
         images = self.get_files(self.data_path)
+
+        # make outpout directories
+        folders = [os.path.join(output_path, "ce_false_localization"), os.path.join(output_path, "ce_misclassification")]
+        for dir in folders:
+            if not os.path.exists(dir):
+                os.makedirs(dir)    
+        count = [0, 0]
         for image_name in images:
             fl_str = ""
             mc_str = ""
@@ -53,28 +61,37 @@ class Helper:
             height, width, _ = img.shape
             with open(os.path.join(self.label_path, lbl_name)) as f:
                 labels = f.readlines()
-            yolo_results = yolo_model(img)
+            yolo_results = yolo_model(img) # YOLO prediction
             # yolo_results.print()
             preds = yolo_results.xyxy[0].cpu()
             gts = []
             for lbl in labels:
-                cls, x, y, w, h = lbl[:-3].split(" ")
+                _, x, y, w, h = lbl[:-3].split(" ")
                 x1, y1, x2, y2 = (float(x) - float(w) / 2) * width, (float(y) - float(h) / 2) * height, (float(x) + float(w) / 2) * width, (float(y) + float(h) / 2) * height
                 gts.append([x1, y1, x2, y2])
             gts = torch.FloatTensor(gts)
-            # print(gts, preds[:, :4])
-            IoUs = get_IoU(preds[:, :4], gts).numpy
-            for k in range(len(IoUs)):
+            IoUs = get_IoU(preds[:, :4], gts)
+            for k in range(IoUs.shape[0]):
                 res = IoUs[k, :]
                 match = np.where(res > 0.8, 1, 0)
                 if np.sum(match) == 0: # false localization
-                    pass
+                    x1, y1, x2, y2 = preds[k, :4]
+                    fl_str += f"{false_localization_label} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
+                    count[0] += 1
                 else:
                     for idx, elem in enumerate(match):
-                        if int(elem) == 1 and int(labels[k][0]) != preds[idx][5]: # mis-classification
-                            pass
-
-            break
+                        # print(elem, int(labels[idx][0]), int(preds[k][5]))
+                        if int(elem) == 1 and int(labels[idx][0]) != preds[k][5]: # mis-classification
+                            x1, y1, x2, y2, _, cls = preds[k, :]
+                            mc_str += f"{str(int(cls))} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
+                            count[1] += 1
+            # generate labels 
+            for cnt, dir in zip([fl_str, mc_str], folders):
+                if cnt:
+                    with open(os.path.join(dir, lbl_name), "a+") as f:
+                        f.write(cnt)
+            # break
+        print(f"generated {count[0]} false localizations, {count[1]} misclassifications")
 if __name__ == "__main__":
     helpler = Helper("./dataset/MIO-TCD/data/images/ce", "./dataset/MIO-TCD/data/labels/ce")
-    helpler.generate_false_prediction("./weights/yolov5s.pt", "./dataset/MIO-TCD/data/")
+    helpler.generate_false_prediction("./weights/yolov5s.pt", "./dataset/MIO-TCD/data/labels")
