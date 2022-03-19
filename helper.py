@@ -1,3 +1,4 @@
+from enum import EnumMeta
 import pandas as pd
 import os
 import numpy as np
@@ -42,17 +43,16 @@ class Helper:
             break
         return files
 
-    def generate_false_prediction(self, weight, output_path, force_reload=False, false_localization_label="-1") -> None:
+    def generate_false_prediction(self, weight, output_path, force_reload=False, false_localization_label="11") -> None:
         yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', weight, force_reload=force_reload)
         images = self.get_files(self.data_path)
 
         # make outpout directories
-        folders = [os.path.join(output_path, "ce_false_localization"), os.path.join(output_path, "ce_misclassification")]
-        for dir in folders:
-            if not os.path.exists(dir):
-                os.makedirs(dir)    
+        output_dir = os.path.join(output_path, "ce_fpa")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)    
         count = [0, 0]
-        for image_name in images:
+        for _idx, image_name in enumerate(images):
             fl_str = ""
             mc_str = ""
             lbl_name = image_name.split(".")[0] + ".txt"
@@ -86,11 +86,10 @@ class Helper:
                             mc_str += f"{str(int(cls))} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
                             count[1] += 1
             # generate labels 
-            for cnt, dir in zip([fl_str, mc_str], folders):
-                if cnt:
-                    with open(os.path.join(dir, lbl_name), "a+") as f:
-                        f.write(cnt)
-            # break
+            with open(os.path.join(output_dir, lbl_name), "a+") as f:
+                f.write(fl_str + mc_str)
+            if _idx > 10:
+                break
         print(f"generated {count[0]} false localizations, {count[1]} misclassifications")
 if __name__ == "__main__":
     helpler = Helper("./dataset/MIO-TCD/data/images/ce", "./dataset/MIO-TCD/data/labels/ce")
