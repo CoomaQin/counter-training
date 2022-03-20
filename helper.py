@@ -70,17 +70,17 @@ class Helper:
                 x1, y1, x2, y2 = (float(x) - float(w) / 2) * width, (float(y) - float(h) / 2) * height, (float(x) + float(w) / 2) * width, (float(y) + float(h) / 2) * height
                 gts.append([x1, y1, x2, y2])
             gts = torch.FloatTensor(gts)
-            IoUs = get_IoU(preds[:, :4], gts)
-            for k in range(IoUs.shape[0]):
-                res = IoUs[k, :]
-                match = np.where(res > 0.8, 1, 0)
+            IoUs = get_IoU(gts, preds[:, :4])
+            # print(preds[:, :4].shape, gts.shape, IoUs.shape)
+            for k in range(IoUs.shape[1]):
+                res = IoUs[:, k]
+                match = np.where(res > 0.3, 1, 0)
                 if np.sum(match) == 0: # false localization
                     x1, y1, x2, y2 = preds[k, :4]
                     fl_str += f"{false_localization_label} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
                     count[0] += 1
                 else:
                     for idx, elem in enumerate(match):
-                        # print(elem, int(labels[idx][0]), int(preds[k][5]))
                         if int(elem) == 1 and int(labels[idx][0]) != preds[k][5]: # mis-classification
                             x1, y1, x2, y2, _, cls = preds[k, :]
                             mc_str += f"{str(int(cls))} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
@@ -88,9 +88,9 @@ class Helper:
             # generate labels 
             with open(os.path.join(output_dir, lbl_name), "a+") as f:
                 f.write(fl_str + mc_str)
-            if _idx > 10:
+            if _idx > 10000:
                 break
         print(f"generated {count[0]} false localizations, {count[1]} misclassifications")
 if __name__ == "__main__":
     helpler = Helper("./dataset/MIO-TCD/data/images/ce", "./dataset/MIO-TCD/data/labels/ce")
-    helpler.generate_false_prediction("./weights/yolov5s.pt", "./dataset/MIO-TCD/data/labels")
+    helpler.generate_false_prediction("./weights/yolov5s_ct_50.pt", "./dataset/MIO-TCD/data/labels")

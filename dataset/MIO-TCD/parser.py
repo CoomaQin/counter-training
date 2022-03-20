@@ -22,6 +22,20 @@ class Parser():
             "pickup_truck": "9",
             "work_van": "10",
         }
+        self.lbl_mapping = {
+            "0": "pedestrian",
+            "1": "bicycle",
+            "2": "car",
+            "3": "motorcycle",
+            "4": "bus",
+            "5": "motorized_vehicle",
+            "6": "single_unit_truck",
+            "7": "articulated_truck",
+            "8": "non-motorized_vehicle",
+            "9": "pickup_truck",
+            "10": "work_van",
+            "11": "FL"
+        }
 
 
     def read(self):
@@ -90,36 +104,38 @@ class Parser():
         cv2.imwrite("./1.jpg", img[y1:y2:, x1:x2, :])
 
     
-    def test_yolo(self, data_path="./MOT_TCD_refine"):
+    def test_yolo(self, data_path="./data"):
         """
         Plot bounding boxes in images for manually verifying whether annotations are correct 
         """
-        image_path = os.path.join(data_path, "images")
-        label_path = os.path.join(data_path, "labels")
+        image_path = os.path.join(data_path, "images", "ce")
+        label_path = os.path.join(data_path, "labels", "ce_fpa")
         images = []
         for (dirpath, dirnames, filenames) in os.walk(image_path):
             images.extend(filenames)
             break
-        for img_name in images:
+        print(len(images))
+        for idx, img_name in enumerate(images):
             img = cv2.imread(os.path.join(image_path, img_name), cv2.IMREAD_COLOR)
             label_name = img_name.split(".")[0] + ".txt"
             label = []
             with open(os.path.join(label_path, label_name)) as f:
                 label = f.readlines()
             height, width, _ = img.shape
+            # print(label)
             for line in label:
                 cls, x, y, w, h, _ = line.split(" ")
                 x1, y1, x2, y2 = int((float(x) - float(w) / 2) * width), int((float(y) - float(h) / 2) * height), int((float(x) + float(w) / 2) * width), int((float(y) + float(h) / 2) * height)
-                img = cv2.putText(img, cls, (x1, y1 - 3), 1, 0.5, [0, 255, 255], thickness=1, lineType=cv2.LINE_AA)
-                print(x1, y1, x2, y2)
+                img = cv2.putText(img, self.lbl_mapping[cls], (x1, y1 - 3), 1, 1, [0, 255, 255], thickness=1, lineType=cv2.LINE_AA)
                 img = cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 1, cv2.LINE_AA)
-                cv2.imwrite(filenames, img)
-            break
+                cv2.imwrite("./raw_fasle_predictions/" + img_name, img)
+            if idx > 10000:
+                break
 
         
 
 if __name__ == "__main__":
     parser = Parser()
-    parser.read()
-    parser.yolo_label()
+    # parser.read()
+    parser.test_yolo()
     # parser.test_yolo()
