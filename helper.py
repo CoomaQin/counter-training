@@ -51,7 +51,7 @@ class Helper:
         output_dir = os.path.join(output_path, "ce_fpa")
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)    
-        count = [0, 0]
+        count = [0, 0, 0]
         for _idx, image_name in enumerate(images):
             fl_str = ""
             mc_str = ""
@@ -86,11 +86,11 @@ class Helper:
                             mc_str += f"{str(int(cls))} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
                             count[1] += 1
             # generate labels 
-            with open(os.path.join(output_dir, lbl_name), "a+") as f:
-                f.write(fl_str + mc_str)
+            # with open(os.path.join(output_dir, lbl_name), "a+") as f:
+            #     f.write(fl_str + mc_str)
             if _idx > 10000:
                 break
         print(f"generated {count[0]} false localizations, {count[1]} misclassifications")
 if __name__ == "__main__":
     helpler = Helper("./dataset/MIO-TCD/data/images/ce", "./dataset/MIO-TCD/data/labels/ce")
-    helpler.generate_false_prediction("./weights/yolov5s_ct_50.pt", "./dataset/MIO-TCD/data/labels")
+    helpler.generate_false_prediction("./weights/rt50_ct_1.pt", "./dataset/MIO-TCD/data/labels")
