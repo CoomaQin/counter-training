@@ -69,8 +69,10 @@ class Parser():
         """
         Convert the original MIO-TCD annotation into YOLO format.
         """
-        for idx, row in tqdm(self.df.iterrows()):
+        pbar = tqdm(total=len(self.df.index))
+        for idx, row in self.df.iterrows():
             img_name, cls, x1, y1, x2, y2 = row.values
+            img_name = (8 - len(str(img_name))) * "0" + str(img_name)
             image_path = f"{self.data_path}train/{img_name}.jpg"
             is_train = True
             if not os.path.exists(image_path):
@@ -85,6 +87,8 @@ class Parser():
             else:
                 with open(label_path, "w+") as f:
                     f.write(f"{self.cls_mapping[cls]} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n")
+            pbar.update(1)
+        pbar.close()
 
 
     def test_ori(self):
@@ -136,6 +140,6 @@ class Parser():
 
 if __name__ == "__main__":
     parser = Parser()
-    # parser.read()
-    parser.test_yolo()
+    parser.read()
+    parser.yolo_label()
     # parser.test_yolo()

@@ -5,7 +5,7 @@ from random import random, seed
 # seed random number generator
 seed(1)
 
-DATA_DIR = "/mnt/c/Users/Cooma/Documents/counter-training/dataset/MIO-TCD/data"
+DATA_DIR = "/home/ubuntu/huixiong/counter-training/dataset/MIO-TCD/data"
 
 dir = "train"
 TRAIN_IMAGES_PATH = f"{DATA_DIR}/images/{dir}"

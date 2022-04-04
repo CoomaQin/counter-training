@@ -71,7 +71,6 @@ class Helper:
                 gts.append([x1, y1, x2, y2])
             gts = torch.FloatTensor(gts)
             IoUs = get_IoU(gts, preds[:, :4])
-            # print(preds[:, :4].shape, gts.shape, IoUs.shape)
             for k in range(IoUs.shape[1]):
                 res = IoUs[:, k]
                 match = np.where(res > 0.3, 1, 0)
@@ -86,11 +85,11 @@ class Helper:
                             mc_str += f"{str(int(cls))} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
                             count[1] += 1
             # generate labels 
-            # with open(os.path.join(output_dir, lbl_name), "a+") as f:
-            #     f.write(fl_str + mc_str)
-            if _idx > 10000:
-                break
+            with open(os.path.join(output_dir, lbl_name), "a+") as f:
+                f.write(fl_str + mc_str)
+            # if _idx > 10000:
+            #     break
         print(f"generated {count[0]} false localizations, {count[1]} misclassifications")
 if __name__ == "__main__":
     helpler = Helper("./dataset/MIO-TCD/data/images/ce", "./dataset/MIO-TCD/data/labels/ce")
-    helpler.generate_false_prediction("./weights/rt50_ct_1.pt", "./dataset/MIO-TCD/data/labels")
+    helpler.generate_false_prediction("./weights/yolov5s_rt_50.pt", "./dataset/MIO-TCD/data/labels")
