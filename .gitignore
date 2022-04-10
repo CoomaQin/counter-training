@@ -4,3 +4,4 @@ weights/
 bdd100k/
 wandb/
 yolov5_tmp
+runs
