@@ -2,3 +2,5 @@ dataset/MIO-TCD/data
 dataset/MIO-TCD/MIO-TCD-Localization
 weights/
 bdd100k/
+wandb/
+yolov5_tmp
