@@ -45,6 +45,7 @@ def init_sampler(opt, labels, mode):
                                     max_cls_samples=200,
                                     classes_per_it=classes_per_it,
                                     num_samples=num_samples,
+                                    data_path="../dataset/bdd100k/instances",
                                     iterations=opt.iterations)
 
 
@@ -164,16 +165,19 @@ def test(opt, test_dataloader, model):
     '''
     device = 'cuda:0' if torch.cuda.is_available() and opt.cuda else 'cpu'
     avg_acc = list()
+    avg_min_dist = []
     for epoch in range(10):
         test_iter = iter(test_dataloader)
         for batch in test_iter:
             x, y = batch
             x, y = x.to(device), y.to(device)
             model_output = model(x)
-            _, acc = loss_fn(model_output, target=y,
+            min_dist, acc = loss_fn(model_output, target=y,
                              n_support=opt.num_support_val)
+            avg_min_dist.append([torch.mean(min_dist[i * 10 : i * 10 + 10]).item() for i in range(10)])
             avg_acc.append(acc.item())
     avg_acc = np.mean(avg_acc)
+    print(avg_min_dist)
     print('Test Acc: {}'.format(avg_acc))
 
     return avg_acc

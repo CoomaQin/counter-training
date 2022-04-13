@@ -1,6 +1,7 @@
 # coding=utf-8
 import numpy as np
 import torch
+import os
 
 
 class PrototypicalBatchSampler(object):
@@ -13,7 +14,7 @@ class PrototypicalBatchSampler(object):
     __len__ returns the number of episodes per epoch (same as 'self.iterations').
     '''
 
-    def __init__(self, labels, max_cls_samples, classes_per_it, num_samples, iterations):
+    def __init__(self, labels, max_cls_samples, classes_per_it, num_samples, iterations, data_path):
         '''
         Initialize the PrototypicalBatchSampler object
         Args:
@@ -32,18 +33,16 @@ class PrototypicalBatchSampler(object):
         self.classes, _ = np.unique(self.labels, return_counts=True)
         self.classes = torch.LongTensor(self.classes)
 
-        # create a matrix, indexes, of dim: classes X max(elements per class)
-        # fill it with nans
-        # for every class c, fill the relative row with the indices samples belonging to c
-        # in numel_per_class we store the number of samples for each class/row
-        self.idxs = range(len(self.labels))
-        self.indexes = np.empty((len(self.classes), self.max_cls_samples), dtype=int) * np.nan
-        self.indexes = torch.Tensor(self.indexes)
+        class_names = []
+        for (_, dirs, _) in os.walk(data_path):
+            class_names.extend(dirs)
+            break
+
         self.numel_per_class = torch.zeros_like(self.classes)
-        for idx, label in enumerate(self.labels):
-            label_idx = np.argwhere(self.classes == label).item()
-            self.indexes[label_idx, np.where(np.isnan(self.indexes[label_idx]))[0][0]] = idx
-            self.numel_per_class[label_idx] += 1
+        for idx, cname in enumerate(class_names):
+            self.numel_per_class[idx] = len(os.listdir(os.path.join(data_path, cname)))
+
+        # print("self.numel_per_class", self.numel_per_class)
 
     def __iter__(self):
         '''
@@ -53,25 +52,15 @@ class PrototypicalBatchSampler(object):
         cpi = self.classes_per_it
         batch = []
         for _ in range(self.iterations):
-            # batch_size = spc * cpi
-            # batch = torch.LongTensor(batch_size)
-            # c_idxs = torch.randperm(len(self.classes))[:cpi]
-            # for i, c in enumerate(self.classes[c_idxs]):
-            #     s = slice(i * spc, (i + 1) * spc)
-            #     # FIXME when torch.argwhere will exists
-            #     label_idx = torch.arange(len(self.classes)).long()[self.classes == c].item()
-            #     sample_idxs = torch.randperm(self.numel_per_class[label_idx])[:spc]
-            #     batch[s] = self.indexes[label_idx][sample_idxs]
             batch_size = spc * cpi
             batch = torch.LongTensor(batch_size)
             c_idxs = torch.randperm(len(self.classes))[:cpi]
             for i, c in enumerate(c_idxs):
                 s = slice(i * spc, (i + 1) * spc)
-                sample_idxs = torch.randperm(self.max_cls_samples)[:spc] # in tiny imagenet, all calsses have the same sample size (500)
-                sample_idxs += (c * self.max_cls_samples)
+                sample_idxs = torch.randperm(self.numel_per_class[c])[:spc] # in tiny imagenet, all calsses have the same sample size
+                sample_idxs += (sum(self.numel_per_class[:c-1]))
                 batch[s] = sample_idxs
             batch = batch[torch.randperm(len(batch))]
-            # print("batch", batch)
             yield batch
 
     def __len__(self):
