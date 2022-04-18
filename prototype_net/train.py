@@ -177,7 +177,6 @@ def test(opt, test_dataloader, model):
             avg_min_dist.append([torch.mean(min_dist[i * 10 : i * 10 + 10]).item() for i in range(10)])
             avg_acc.append(acc.item())
     avg_acc = np.mean(avg_acc)
-    print(avg_min_dist)
     print('Test Acc: {}'.format(avg_acc))
 
     return avg_acc
