@@ -30,6 +30,15 @@ def get_IoU(box1, box2):
     inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
     return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
 
+def get_IoP(box1, box2):
+    def box_area(box):
+        return (box[2] - box[0]) * (box[3] - box[1])
+
+    area1 = box_area(box1.T)
+    area2 = box_area(box2.T)
+
+    inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
+    return inter / area2
 
 class Helper:
     def __init__(self, data_path, label_path) -> None:
@@ -74,9 +83,11 @@ class Helper:
                     gts = torch.FloatTensor(gts)
                     # print("gts", _idx, gts, lbl_name)
                     IoUs = get_IoU(gts, preds[:, :4])
+                    IoPs = get_IoP(gts, preds[:, :4])
                     for k in range(IoUs.shape[1]):
                         res = IoUs[:, k]
-                        match = np.where(res > 0.3, 1, 0)
+                        resP = IoPs[:, k]
+                        match = np.where(res > 0.3 and resP < 0.7, 1, 0)
                         if np.sum(match) == 0: # false localization
                             x1, y1, x2, y2 = preds[k, :4]
                             fl_str += f"{false_localization_label} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
@@ -95,5 +106,5 @@ class Helper:
                 #     break
         print(f"generated {count[0]} false localizations, {count[1]} misclassifications")
 if __name__ == "__main__":
-    helpler = Helper("./dataset/bdd100k/images/ce", "./dataset/bdd100k/labels/ce")
-    helpler.generate_false_prediction("./weights/yolov5s_rt_50.pt", "./dataset/bdd100k/labels")
+    helper = Helper("./dataset/bdd100k/images/ce", "./dataset/bdd100k/labels/ce")
+    helper.generate_false_prediction("./weights/yolov5s_rt_50.pt", "./dataset/bdd100k/labels")

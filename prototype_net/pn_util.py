@@ -13,6 +13,25 @@ import torchvision.transforms as transforms
 import os
 
 
+class Option:
+    def __init__(self) -> None:
+        self.dataset_root = '..' + os.sep + 'dataset' + os.sep + 'bdd100k' + os.sep + 'instances'
+        self.experiment_root = '..'
+        self.epochs = 100
+        self.learning_rate = 0.001
+        self.lr_scheduler_step = 20
+        self.lr_scheduler_gamma = 0.5
+        self.iterations = 5
+        self.classes_per_it_tr = 11
+        self.num_support_tr = 20
+        self.num_query_tr = 10
+        self.classes_per_it_val = 11
+        self.num_support_val = 20
+        self.num_query_val = 40
+        self.manual_seed = 7
+        self.cuda = True
+
+
 def init_seed(opt):
     '''
     Disable cudnn to maximize reproducibility
@@ -201,6 +220,26 @@ def eval(opt):
          test_dataloader=test_dataloader,
          model=model)
 
+def get_model_dataloader():
+
+    if torch.cuda.is_available():
+        print("WARNING: You have a CUDA device, so you should probably run with --cuda")
+    option = Option()
+    init_seed(option)
+    model = init_protonet(option)
+    model.load_state_dict(torch.load("../ptnet_tin_100/last_model.pth"))
+    model.eval()
+
+    test_transform = transforms.Compose([
+        transforms.Resize(64),
+        transforms.CenterCrop(64),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    test_dataloader = init_dataloader(option, "test", transform = test_transform)
+   
+    return model, test_dataloader
 
 def main(is_training=False):
     '''

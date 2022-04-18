@@ -166,19 +166,7 @@ def yolo_prototypical_loss(input, target, support_x, support_y):
 
     prototypes = torch.stack([supportx_cpu[idx_list].mean(0) for idx_list in support_idxs])
     # FIXME when torch will support where as np
-    query_idxs = torch.stack(list(map(lambda c: target_cpu.eq(c).nonzero(), classes))).view(-1)
 
-    query_samples = input_cpu[query_idxs]
-    dists = euclidean_dist(query_samples, prototypes)
+    dists = euclidean_dist(input_cpu, prototypes)
 
-    log_p_y = F.log_softmax(-dists, dim=1).view(n_classes, n_query, -1)
-
-    target_inds = torch.arange(0, n_classes)
-    target_inds = target_inds.view(n_classes, 1, 1)
-    target_inds = target_inds.expand(n_classes, n_query, 1).long()
-
-    loss_val = -log_p_y.gather(2, target_inds).squeeze().view(-1).mean()
-    _, y_hat = log_p_y.max(2)
-    acc_val = y_hat.eq(target_inds.squeeze(2)).float().mean()
-
-    return loss_val,  acc_val
+    return dists
