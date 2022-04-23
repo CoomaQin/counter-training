@@ -81,30 +81,30 @@ class Helper:
                         x1, y1, x2, y2 = (float(x) - float(w) / 2) * width, (float(y) - float(h) / 2) * height, (float(x) + float(w) / 2) * width, (float(y) + float(h) / 2) * height
                         gts.append([x1, y1, x2, y2])
                     gts = torch.FloatTensor(gts)
-                    # print("gts", _idx, gts, lbl_name)
                     IoUs = get_IoU(gts, preds[:, :4])
                     IoPs = get_IoP(gts, preds[:, :4])
                     for k in range(IoUs.shape[1]):
                         res = IoUs[:, k]
                         resP = IoPs[:, k]
-                        match = np.where(res > 0.3 and resP < 0.7, 1, 0)
-                        if np.sum(match) == 0: # false localization
+                        match = np.where(res > 0.15, 1, 0)
+                        matchP = np.where(resP > 0.7, 1, 0)
+                        if np.sum(match) == 0 and np.sum(matchP) == 0: # false localization --- IoU < 15% and IoP < 70%
                             x1, y1, x2, y2 = preds[k, :4]
                             fl_str += f"{false_localization_label} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
                             count[0] += 1
-                        # else:
-                        #     for idx, elem in enumerate(match):
-                        #         if int(elem) == 1 and int(labels[idx][0]) != preds[k][5]: # mis-classification
-                        #             x1, y1, x2, y2, _, cls = preds[k, :]
-                        #             mc_str += f"{str(int(cls))} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
-                        #             count[1] += 1
+                        else:
+                            idx = np.argmax(res)
+                            if res[idx] > 0.85 and int(labels[idx].split(" ")[0]) != preds[k][5]: # mis-classification
+                                x1, y1, x2, y2, _, cls = preds[k, :]
+                                mc_str += f"{str(int(cls))} {((x1 + x2) / 2 / width):.6f} {((y2 + y1) / 2 / height):.6f} {((x2 - x1) / width):.6f} {((y2 - y1) / height):.6f} \n"
+                                count[1] += 1
                     if len(fl_str + mc_str) > 0: 
                         # generate labels 
                         with open(os.path.join(output_dir, lbl_name), "a+") as f:
                             f.write(fl_str + mc_str)
-                # if _idx > 10000:
+                # if _idx > 500:
                 #     break
         print(f"generated {count[0]} false localizations, {count[1]} misclassifications")
 if __name__ == "__main__":
     helper = Helper("./dataset/bdd100k/images/ce", "./dataset/bdd100k/labels/ce")
-    helper.generate_false_prediction("./weights/yolov5s_rt_50.pt", "./dataset/bdd100k/labels")
+    helper.generate_false_prediction("./weights/yolov5s_bdd_rt_50.pt", "./dataset/bdd100k/labels")
